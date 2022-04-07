@@ -11,15 +11,14 @@ import (
 
 func main() {
 	var port int
-	var args []string
+	args := os.Args[1:]
 
-	if os.Getenv("DOCKER") == "" {
+	if os.Getenv("DOCKER") == "true" {
 		if os.Getenv("PORT") == "" {
 			os.Setenv("PORT", "1234")
 		}
 		port, _ = strconv.Atoi(os.Getenv("PORT"))
 	} else {
-		args = os.Args[1:]
 		port, _ = strconv.Atoi(args[0])
 	}
 
@@ -31,8 +30,8 @@ func main() {
 	// initial nodes discovery
 	server.DiscoverNodes()
 
-	l, e := net.Listen("tcp", ":"+args[0])
-	log.Printf("Listening %s \n", args[0])
+	l, e := net.Listen("tcp", ":"+strconv.Itoa(port))
+	log.Printf("Listening %s \n", strconv.Itoa(port))
 	if e != nil {
 		log.Fatal("Listen error: ", e)
 	}
