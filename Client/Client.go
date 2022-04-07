@@ -1,32 +1,37 @@
 package main
 
 import (
-	"encoding/json"
+
 	"fmt"
 	"log"
 	"net/rpc"
 )
 
 type PushEvent struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key   string 
+	Value string 
+}
+type ClientPushResp struct{
+	Success []bool
+}
+
+type ClientGetResp struct{
+	Values []string
 }
 
 func main() {
-	client, err := rpc.DialHTTP("tcp", ":1234") // connect to the node
+	client, err := rpc.DialHTTP("tcp", ":8081") // connect to the node
 	if err != nil {
 		log.Fatal("Dialing:", err)
 	}
 
-	var reply bool
-	var reply2 string
+	reply  :=  ClientPushResp{}
+	reply2 := ClientGetResp{}
 
-	args, err := json.Marshal(PushEvent{Key: "Hello", Value: "There"})
-	if err != nil {
-		log.Fatal("JSON error:", err)
-	}
+	args := PushEvent{"Hello", "There"}
 
-	err = client.Call("Server.PushValue", args, &reply)
+
+	err = client.Call("Server.PushValue", &args, &reply)
 	if err != nil {
 		log.Fatal("RPC error:", err)
 	}

@@ -1,48 +1,19 @@
 package main
 
-import (
-	"hash/fnv"
-	"log"
-	"net/rpc"
-	"strconv"
-)
 
-// QueryNode queries specific node for key
-func QueryNode(node Node, key *string) string {
-	client, err := rpc.DialHTTP("tcp", ":"+strconv.Itoa(node.port))
-	if err != nil {
-		log.Fatal("Dialing: ", err)
-	}
 
-	var reply string
-
-	err = client.Call("Server.GetValue", key, &reply)
-	if err != nil {
-		log.Fatal("Server.GetValue error:", err)
-	}
-
-	return reply
+// get value from local DB
+func (s *Server) GetReplicatesValue(key *string, getReplicaResp *GetReplicaResp) error {
+	value, _ := s.Database.Get(*key)
+	getReplicaResp.Value = value
+	return nil
 }
 
-// PushNode queries specific node for key
-func PushNode(node Node, key *[]byte) bool {
-	client, err := rpc.DialHTTP("tcp", ":"+strconv.Itoa(node.port))
-	if err != nil {
-		log.Fatal("Dialing: ", err)
-	}
-
-	var reply bool
-
-	err = client.Call("Server.PushValue", key, &reply)
-	if err != nil {
-		log.Fatal("Server.GetValue error:", err)
-	}
-
-	return reply
+// put value to local DB
+func (s *Server) PutReplica(pushEvent *PushEvent, putReplicaResp *PutReplicaResp) error {
+	s.Database.Put(pushEvent.Key, pushEvent.Value)
+	putReplicaResp.Success = true
+	return nil
 }
 
-func hash(s string) uint32 {
-	h := fnv.New32a()
-	h.Write([]byte(s))
-	return h.Sum32()
-}
+

@@ -1,69 +1,128 @@
 package main
 
 import (
-	"encoding/json"
+
 	"time"
+	"strconv"
+	"net/rpc"
+	"log"
 )
 
-func CreateServer(port int) *Server {
-	server := Server{ID: int(time.Now().UnixNano()), Database: *NewDatabase(), nodes: make([]Node, 0), selfPort: port}
+func CreateServer(port uint64) *Server {
+	server := Server{ID: int(time.Now().UnixNano()), 
+		Database: *NewDatabase(), 
+		nodeManager: NewManager(port, 5, 5*time.Second),  //Peiyuan: Default: 5 virtual node per physical node. 5 seconds before expire
+		selfPort: port, 
+		numReplica: 3, //Peiyuan: Default: replicate on 5 nodes
+		nodeSet: []uint64{8081, 8082,8083, 8084, 8085,}, //Peiyuan: defualt node map
+	}
+	
 	return &server
 }
 
 func (s *Server) DiscoverNodes() {
-	// add self
-	s.nodes = append(s.nodes, Node{ID: s.ID, port: s.selfPort})
+	//add self
+	s.nodeManager.UpdateNode(NodeInfo{
+		Alive: true,
+		Port: s.selfPort,  
+		Version: time.Now().UnixNano(),
+	})
 
-	// query other ports to discover nodes
+	go func(){
+		for {
+			s.sendHeatBeart()
+			time.Sleep(2 * time.Second)
+		}
+	}()
 
-	// order nodes by ID to form ring structure
 }
 
-func (s *Server) GetValue(key *string, reply *string) error {
-	// hash key
-	keyHash := hash(*key)
+func (s *Server) sendHeatBeart() {
 
-	if s.nodes[int(keyHash)%len(s.nodes)].ID != s.ID {
-		// key is on different node, query correct node instead
-		for _, node := range s.nodes {
-			if node.ID == int(keyHash)%len(s.nodes) {
-				// query this node
-				*reply = QueryNode(node, key)
-			}
-		}
-	} else {
-		// key is on this node, return value from local store
-		*reply = s.Database.Get(*key)
+	nodeInfo := NodeInfo{
+		Alive: true,
+		Port: s.selfPort,  
+		Version: time.Now().UnixNano(),
 	}
 
+	heartBeatMessage := HeartBeatMessage{Info: nodeInfo}
+	for _, port := range s.nodeSet {
+		reply := HeartBeatReply{}
+		client, err := rpc.DialHTTP("tcp", ":"+strconv.Itoa(int(port)))
+		if err != nil {
+			log.Printf("Node %d fail dial to %d", s.selfPort, port)
+			log.Print("sendHeatBeart error: ", err)
+			continue
+		}
+		err = client.Call("Server.ReceiveHeatBeat", &heartBeatMessage, &reply)
+		if err != nil {
+			log.Printf("Node %d fail to send heartbeat to %d", s.selfPort, port)
+			log.Print("sendHeatBeart error: ", err)
+			continue
+		}
+		s.nodeManager.ImportRing(reply.Ring)
+		log.Printf("Node %d succeed in sending heartbeat to %d", s.selfPort, port)
+	}
+}
+
+func (s *Server) ReceiveHeatBeat(heartBeatMessage *HeartBeatMessage,heartBeatReply *HeartBeatReply) error {
+	s.nodeManager.UpdateNode(heartBeatMessage.Info)
+	heartBeatReply.Ring = s.nodeManager.ExportRing()
 	return nil
 }
 
-func (s *Server) PushValue(pushEventBytes *[]byte, reply *bool) error {
-	// decode args
-	var pushEvent PushEvent
-	err := json.Unmarshal(*pushEventBytes, &pushEvent)
-	if err != nil {
-		*reply = false
-		return err
+// called by client, get value from preferencelists and aggregate 
+func (s *Server) GetValue(key *string, clientGetResp *ClientGetResp) error {
+	// hash key
+	key_uint64, _ := strconv.ParseUint(*key, 10, 64)
+
+	preferenceList, _ := s.nodeManager.GetPreferenceList(key_uint64, s.numReplica)
+	reply_list := []string{}
+	for _, port := range preferenceList{
+		client, err := rpc.DialHTTP("tcp", ":"+strconv.Itoa(int(port)))
+		if err != nil {
+			log.Fatal("Dialing: ", err)
+		}
+
+		reply := GetReplicaResp{}
+
+		err = client.Call("Server.GetReplicatesValue", key, &reply)
+		if err != nil {
+			log.Fatal("Server.GetValue error:", err)
+		}
+
+		reply_list = append(reply_list, reply.Value)
 	}
+	clientGetResp.Values = reply_list
+	return nil
+}
+
+//called by client, push value to all nodes in preference list
+func (s *Server) PushValue(pushEvent *PushEvent, clientPushResp *ClientPushResp) error {
+	
 
 	// hash key
-	keyHash := hash(pushEvent.Key)
+	key_uint64, _ := strconv.ParseUint(pushEvent.Key, 10, 64)
 
-	if s.nodes[int(keyHash)%len(s.nodes)].ID != s.ID {
-		// key is supposed to be on a different node, send it to the correct node instead
-		for _, node := range s.nodes {
-			if node.ID == int(keyHash)%len(s.nodes) {
-				// send to this node and forward reply to client
-				*reply = PushNode(node, pushEventBytes)
-			}
+	preferenceList, _ := s.nodeManager.GetPreferenceList(key_uint64, s.numReplica)
+	log.Printf("pereference list for key %s is %v", pushEvent.Key, preferenceList)
+	reply_list := []bool{}
+	for _, port := range preferenceList{
+		client, err := rpc.DialHTTP("tcp", ":"+strconv.Itoa(int(port)))
+		if err != nil {
+			log.Fatal("Dialing: ", err)
 		}
-	} else {
-		// key is supposed to be on this node, add to local store
-		s.Database.Put(pushEvent.Key, pushEvent.Value)
-		*reply = true
+
+		reply := PutReplicaResp{}
+
+		err = client.Call("Server.PutReplica", pushEvent, &reply)
+		if err != nil {
+			log.Fatal("Server.GetValue error:", err)
+		}
+		reply_list = append(reply_list, reply.Success)
 	}
+
+	clientPushResp.Success = reply_list
 
 	return nil
 }
