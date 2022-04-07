@@ -1,11 +1,12 @@
+# Mercury
 
+Mercury is a distributed key-value store implementing consistent hashing with a ring structure and fault tolerance.
 
-
-## run locally without docker
+## Run locally without docker
 
 ```bash
 go build -v -o Mercury .
-./Mercury 8081 
+./Mercury 8081
 
 ./Mercury 8082
 
@@ -15,6 +16,5 @@ go build -v -o Mercury .
 
 ./Mercury 8085
 
-go run Client/Client.go              
+go run Client/Client.go
 ```
-

@@ -10,13 +10,18 @@ import (
 )
 
 func main() {
-	//if os.Getenv("PORT") == "" {
-	//	os.Setenv("PORT", "1234")
-	//}
-	//port, _ := strconv.Atoi(os.Getenv("PORT"))
+	var port int
+	var args []string
 
-	args := os.Args[1:]
-	port, _ := strconv.ParseInt(args[0], 10, 64)
+	if os.Getenv("DOCKER") == "" {
+		if os.Getenv("PORT") == "" {
+			os.Setenv("PORT", "1234")
+		}
+		port, _ = strconv.Atoi(os.Getenv("PORT"))
+	} else {
+		args = os.Args[1:]
+		port, _ = strconv.Atoi(args[0])
+	}
 
 	// create server
 	server := CreateServer(uint64(port))

@@ -5,6 +5,7 @@ services:
     build: .
     environment:
       PORT: 8081
+      DOCKER: true
     ports:
       - "8081:8081"
     network_mode: host
@@ -13,6 +14,7 @@ services:
     build: .
     environment:
       PORT: 8082
+      DOCKER: true
     ports:
       - "8082:8082"
     network_mode: host
