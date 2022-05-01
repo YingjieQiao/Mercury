@@ -25,21 +25,21 @@ func main() {
 		log.Fatal("Dialing:", err)
 	}
 
-	reply := ClientPushResp{}
+	// reply := ClientPushResp{}
 	reply2 := ClientGetResp{}
 
-	args := PushEvent{"Hello", "There"}
+	// args := PushEvent{"Bruce", "Banner"}
 
-	err = client.Call("Server.PushValue", &args, &reply)
+	// err = client.Call("Server.PushValue", &args, &reply)
+	// if err != nil {
+	// 	log.Fatal("RPC error:", err)
+	// }
+	// fmt.Printf("Push value response: %v\n", reply) // should be true, pushed successfully
+
+	err = client.Call("Server.GetValue", "Bruce", &reply2)
 	if err != nil {
 		log.Fatal("RPC error:", err)
 	}
-	fmt.Printf("Push value response: %v\n", reply) // should be true, pushed successfully
-
-	err = client.Call("Server.GetValue", "Hello", &reply2)
-	if err != nil {
-		log.Fatal("RPC error:", err)
-	}
-	fmt.Printf("Get value response: Hello %v\n", reply2) // should be "There" as value was pushed successfully
+	fmt.Printf("Get value response: Bruce %v\n", reply2) // should be "There" as value was pushed successfully
 
 }

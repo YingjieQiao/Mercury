@@ -84,8 +84,9 @@ func (s *Server) GetValue(key *string, clientGetResp *ClientGetResp) error {
 		}
 
 		reply := GetReplicaResp{}
+		getEvent := GetEvent{port, key}
 
-		err = client.Call("Server.GetReplicatesValue", key, &reply)
+		err = client.Call("Server.GetReplicatesValue", &getEvent, &reply)
 		if err != nil {
 			log.Fatal("Server.GetValue error:", err)
 		}
@@ -113,7 +114,9 @@ func (s *Server) PushValue(pushEvent *PushEvent, clientPushResp *ClientPushResp)
 
 		reply := PutReplicaResp{}
 
-		err = client.Call("Server.PutReplica", pushEvent, &reply)
+		pushEventVC := PushEventVC{uint64(port), pushEvent.Key, pushEvent.Value}
+
+		err = client.Call("Server.PutReplica", pushEventVC, &reply)
 		if err != nil {
 			log.Fatal("Server.GetValue error:", err)
 		}

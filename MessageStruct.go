@@ -6,9 +6,20 @@ type NodeInfo struct {
 	Version int64
 }
 
+type GetEvent struct {
+	Port uint64
+	Key *string
+}
+
 type PushEvent struct {
 	Key   string 
 	Value string 
+}
+
+type PushEventVC struct {
+	Port uint64
+	Key string
+	Value string
 }
 
 //Peiyuan: sent by client to coordinator
