@@ -1,4 +1,5 @@
 .idea/
 Mercury
 .env
+.DS_Store
 
