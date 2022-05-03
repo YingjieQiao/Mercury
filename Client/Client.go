@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"math/rand"
@@ -25,7 +24,7 @@ type ClientGetResp struct {
 	Values []string
 }
 
-func roundRobin() []string {
+func loadBalancing() []string {
 	var nodeList []string
 	envNodeList := os.Getenv("NODE_LIST")
 
@@ -46,26 +45,18 @@ func roundRobin() []string {
 }
 
 func main() {
-	for {
-		fmt.Printf("Enter 1: Scalability Test\n" +
-			"Enter 2: Vector Clock/Correctness Test\n" +
-			"Enter any other key to run Default KV Test\n")
+	argsWithoutProg := os.Args[1:]
+	var mode = argsWithoutProg[0]
 
-		reader := bufio.NewReader(os.Stdin)
-		char, _, _ := reader.ReadRune()
-		if char == '1' {
-			fmt.Println("Scalability Test")
-			scalabilityTest()
-			break
-		} else if char == '2' {
-			fmt.Println("Vector Clock/Correctness Test")
-			// TODO
-			break
-		} else {
-			fmt.Println("Default KV Test")
-			defaultTest()
-			break
-		}
+	if mode == "1" {
+		fmt.Println("Scalability Test")
+		scalabilityTest()
+	} else if mode == "2" {
+		fmt.Println("Vector Clock/Correctness Test")
+		// TODO
+	} else {
+		fmt.Println("Fault Tolerance Test")
+		faultTolerenceTest()
 	}
 }
 
@@ -77,7 +68,7 @@ func scalabilityTest() {
 	start := time.Now()
 
 	for i := 1; i <= n; i++ {
-		nodeList := roundRobin()
+		nodeList := loadBalancing()
 		rand.Seed(time.Now().UnixNano())
 		node := nodeList[rand.Intn(len(nodeList))]
 
@@ -117,11 +108,11 @@ func scalabilityTest() {
 	interval := end.Sub(start).Seconds()
 	log.Printf("%d write fails for %d operations, %d write fails for for %d operations. \n",
 		writeFails, n, readFails, n)
-	log.Printf("Throughout: %f RPS", float64(n*2)/float64(interval))
+	log.Printf("Throughput: %f RPS", float64(n*2)/float64(interval))
 }
 
-func defaultTest() {
-	//nodeList := roundRobin()
+func faultTolerenceTest() {
+	//nodeList := loadBalancing()
 	//rand.Seed(time.Now().Unix())
 	//node := nodeList[rand.Intn(len(nodeList))]
 	//
