@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+
 	// "fmt"
 	// "fmt"
 	"log"
@@ -50,8 +52,6 @@ func (DB Database) Get(port uint64, key string) (string, bool) {
 
 	val := DB.getVersions(port, key)
 
-	
-
 	// fmt.Println("Returned values:", values)
 
 	// result := make(map[string]interface{})
@@ -73,7 +73,7 @@ func (DB Database) Put(port uint64, key string, value string) {
 
 	// build VectorClkDB
 	latest_vc := DB.GetVC(port, key)
-	latest_vc[port % 8081] += 1
+	latest_vc[port%8081] += 1
 
 	// initialize vector clock
 	doc := bson.D{{"port", port}, {"key", key}, {"value", value}, {"vc", latest_vc}}
@@ -99,19 +99,19 @@ func (DB Database) GetVC(port uint64, key string) [N]int {
 		panic(err)
 	}
 
-	output := [N]int{0,0,0,0,0}
+	output := [N]int{0, 0, 0, 0, 0}
 
 	if len(results) == 0 {
 		return output
 	}
-	
+
 	for _, result := range results {
 		doc, err := bson.Marshal(result)
 		if err != nil {
 			panic(err)
 		}
 		var temp VectorClkDB
-		err = bson.Unmarshal(doc,&temp)
+		err = bson.Unmarshal(doc, &temp)
 		if err != nil {
 			panic(err)
 		}
@@ -145,7 +145,7 @@ func (DB Database) getVersions(port uint64, key string) string {
 		return ""
 	}
 
-	output := [N]int{0,0,0,0,0}
+	output := [N]int{0, 0, 0, 0, 0}
 	value := ""
 	for _, result := range results {
 		doc, err := bson.Marshal(result)
@@ -153,7 +153,7 @@ func (DB Database) getVersions(port uint64, key string) string {
 			panic(err)
 		}
 		var temp VectorClkDB
-		err = bson.Unmarshal(doc,&temp)
+		err = bson.Unmarshal(doc, &temp)
 		if err != nil {
 			panic(err)
 		}
@@ -164,6 +164,8 @@ func (DB Database) getVersions(port uint64, key string) string {
 			value = temp.Value
 		}
 	}
+
+	fmt.Print("Conflict Vector Clock: ", output)
 
 	return value
 }
@@ -176,27 +178,27 @@ func CompareVCs(arr1 [N]int, arr2 [N]int) int {
 
 	arr1_greater := true
 	for i := 0; i < N; i++ {
-		if !(arr1[i] >= arr2[i]){
+		if !(arr1[i] >= arr2[i]) {
 			arr1_greater = false
 			break
-		} 
+		}
 	}
 
 	arr2_greater := true
 	for i := 0; i < N; i++ {
-		if !(arr2[i] >= arr1[i]){
+		if !(arr2[i] >= arr1[i]) {
 			arr2_greater = false
 			break
-		} 
+		}
 	}
 
-	if !arr1_greater && !arr2_greater{
+	if !arr1_greater && !arr2_greater {
 		return 3
 	}
-	if arr1_greater{
+	if arr1_greater {
 		return 1
 	}
-	if arr2_greater{
+	if arr2_greater {
 		return 2
 	}
 	return 0

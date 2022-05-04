@@ -53,7 +53,7 @@ func main() {
 		scalabilityTest()
 	} else if mode == "2" {
 		fmt.Println("Vector Clock/Correctness Test")
-		// TODO
+		correctnessTest()
 	} else {
 		fmt.Println("Fault Tolerance Test")
 		faultTolerenceTest()
@@ -109,6 +109,32 @@ func scalabilityTest() {
 	log.Printf("%d write fails for %d operations, %d write fails for for %d operations. \n",
 		writeFails, n, readFails, n)
 	log.Printf("Throughput: %f RPS", float64(n*2)/float64(interval))
+}
+
+func correctnessTest() {
+	client, err := rpc.DialHTTP("tcp", ":8081") // connect to the node
+	if err != nil {
+		log.Fatal("Dialing:", err)
+	}
+
+	reply := ClientPushResp{}
+	reply2 := ClientGetResp{}
+
+	args := PushEvent{"Hello", "There"}
+
+	err = client.Call("Server.PushValue", &args, &reply)
+	if err != nil {
+		log.Fatal("RPC error:", err)
+	}
+	fmt.Printf("Push value response: %v\n", reply) // should be true, pushed successfully
+
+	err = client.Call("Server.GetValue", "Hello", &reply2)
+	if err != nil {
+		log.Fatal("RPC error:", err)
+	}
+
+	client.Close()
+	fmt.Printf("Get value response: Hello %v\n", reply2) // should be "There" as value was pushed successfully
 }
 
 func faultTolerenceTest() {
